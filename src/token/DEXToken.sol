@@ -26,8 +26,6 @@ contract DEXToken is ERC20, AccessControl {
     }
 
     function burn(uint256 amount) public {
-        if (totalSupply() + amount > MAX_SUPPLY) revert DEXToken__MaxSupplyExceeded();
-
         _burn(msg.sender, amount);
         emit BurnToken(msg.sender, amount);
     }
