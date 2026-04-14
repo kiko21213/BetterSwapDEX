@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.29;
 
 import {Test} from "forge-std/Test.sol";
 import {LiquidityPool} from "src/core/LiquidityPool.sol";
