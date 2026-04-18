@@ -17,15 +17,15 @@ contract ProjectSetUp is Test {
     DEXToken internal token;
 
     function setUp() public {
-        pool = new LiquidityPool();
-        factory = new PoolFactory();
-        router = new Router();
         tokenA = new MockERC20("Token A", "TKA");
         tokenB = new MockERC20("Token B", "TKB");
+        pool = new LiquidityPool(address(tokenA), address(tokenB));
+        factory = new PoolFactory();
+        router = new Router();
         token = new DEXToken(address(this));
     }
 
-    function test_ProjectBaseDeploys() public {
+    function test_ProjectBaseDeploys() public view {
         assertTrue(address(pool) != address(0));
         assertTrue(address(factory) != address(0));
         assertTrue(address(router) != address(0));
