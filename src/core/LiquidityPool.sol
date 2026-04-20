@@ -28,6 +28,9 @@ contract LiquidityPool is ERC20, ReentrancyGuard {
 
     error LiquidityPool__ZeroAddress();
     error LiquidityPool__CantBeZero();
+    error LiquidityPool__PoolIsVoid();
+    error LiquidityPool__AddressToken();
+    error LiquidityPool__InvariantBroken();
 
     constructor(address _token0, address _token1) ERC20("BSW-LP", "BSW-LP") {
         if (_token0 == address(0)) revert LiquidityPool__ZeroAddress();
@@ -67,5 +70,50 @@ contract LiquidityPool is ERC20, ReentrancyGuard {
         IERC20(token0).safeTransfer(msg.sender, amount0);
         IERC20(token1).safeTransfer(msg.sender, amount1);
         emit LiquidityRemoved(msg.sender, amount0, amount1, lpAmount);
+    }
+
+    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
+        public
+        pure
+        returns (uint256 amountOut)
+    {
+        if (amountIn == 0) revert LiquidityPool__CantBeZero();
+        if (reserveIn == 0) revert LiquidityPool__CantBeZero();
+        if (reserveOut == 0) revert LiquidityPool__CantBeZero();
+
+        uint256 amountInWithFee = amountIn * 997;
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = reserveIn * 1000 + amountInWithFee;
+        amountOut = numerator / denominator;
+    }
+
+    function swap(uint256 amount0Out, uint256 amount1Out, address to) external nonReentrant {
+        if (amount0Out == 0 && amount1Out == 0) revert LiquidityPool__CantBeZero();
+        if (to == address(0)) revert LiquidityPool__ZeroAddress();
+        if (to == token0 || to == token1) revert LiquidityPool__AddressToken();
+        if (amount0Out >= reserve0 || amount1Out >= reserve1) revert LiquidityPool__PoolIsVoid();
+
+        if (amount0Out > 0) {
+            IERC20(token0).safeTransfer(to, amount0Out);
+        }
+        if (amount1Out > 0) {
+            IERC20(token1).safeTransfer(to, amount1Out);
+        }
+
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+
+        uint256 amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0;
+        uint256 amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0;
+        if (amount0In == 0 && amount1In == 0) revert LiquidityPool__CantBeZero();
+        uint256 balance0Adjusted = balance0 * 1000 - amount0In * 3;
+        uint256 balance1Adjusted = balance1 * 1000 - amount1In * 3;
+
+        if (balance0Adjusted * balance1Adjusted < reserve0 * reserve1 * 1000 * 1000) {
+            revert LiquidityPool__InvariantBroken();
+        }
+
+        _updateReserves(balance0, balance1);
+        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
     }
 }
