@@ -40,6 +40,7 @@ contract LiquidityPool is ERC20, ReentrancyGuard {
     }
 
     function addLiquidity(uint256 amount0, uint256 amount1) external nonReentrant returns (uint256 lpAmount) {
+        if (amount0 == 0 || amount1 == 0) revert LiquidityPool__CantBeZero();
         if (reserve0 == 0) {
             lpAmount = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(1), MINIMUM_LIQUIDITY);
