@@ -8,20 +8,24 @@ contract PoolFactory {
 
     mapping(address => mapping(address => address)) public getPools;
 
-    event PoolAdded(address indexed owner, address tokenA, address tokenB, address pool);
+    event PoolAdded(address indexed owner, address token0, address token1, address pool);
 
     error PoolFactory__ZeroAddress();
     error PoolFactory__AlreadyExist();
+    error PoolFactory__TokensAreEqual();
 
     function createPool(address tokenA, address tokenB) external {
-        if (tokenA == address(0) || tokenB == address(0)) revert PoolFactory__ZeroAddress();
-        if (getPools[tokenA][tokenB] != address(0)) revert PoolFactory__AlreadyExist();
-        LiquidityPool pool = new LiquidityPool(tokenA, tokenB);
+        if (tokenA == tokenB) revert PoolFactory__TokensAreEqual();
+        (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        if (token0 == address(0)) revert PoolFactory__ZeroAddress();
+        if (getPools[token0][token1] != address(0)) revert PoolFactory__AlreadyExist();
+        LiquidityPool pool = new LiquidityPool(token0, token1);
         address poolAddress = address(pool);
 
-        getPools[tokenA][tokenB] = poolAddress;
+        getPools[token0][token1] = poolAddress;
+        getPools[token1][token0] = poolAddress;
         allPools.push(poolAddress);
 
-        emit PoolAdded(msg.sender, tokenA, tokenB, poolAddress);
+        emit PoolAdded(msg.sender, token0, token1, poolAddress);
     }
 }
