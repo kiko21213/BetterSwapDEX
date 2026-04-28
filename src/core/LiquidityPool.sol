@@ -39,19 +39,23 @@ contract LiquidityPool is ERC20, ReentrancyGuard {
         token1 = _token1;
     }
 
-    function addLiquidity(uint256 amount0, uint256 amount1) external nonReentrant returns (uint256 lpAmount) {
+    function mint(address to) external nonReentrant returns (uint256 lpAmount) {
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+
+        uint256 amount0 = balance0 - reserve0;
+        uint256 amount1 = balance1 - reserve1;
         if (amount0 == 0 || amount1 == 0) revert LiquidityPool__CantBeZero();
-        if (reserve0 == 0) {
+        if (totalSupply() == 0) {
             lpAmount = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(1), MINIMUM_LIQUIDITY);
         } else {
             lpAmount = Math.min(amount0 * totalSupply() / reserve0, amount1 * totalSupply() / reserve1);
         }
         if (lpAmount == 0) revert LiquidityPool__CantBeZero();
-        IERC20(token0).safeTransferFrom(msg.sender, address(this), amount0);
-        IERC20(token1).safeTransferFrom(msg.sender, address(this), amount1);
-        _mint(msg.sender, lpAmount);
-        _updateReserves(reserve0 + amount0, reserve1 + amount1);
+
+        _mint(to, lpAmount);
+        _updateReserves(balance0, balance1);
         emit LiquidityAdded(msg.sender, amount0, amount1, lpAmount);
     }
 
@@ -60,17 +64,21 @@ contract LiquidityPool is ERC20, ReentrancyGuard {
         reserve1 = r1;
     }
 
-    function removeLiquidity(uint256 lpAmount) external nonReentrant returns (uint256 amount0, uint256 amount1) {
-        if (lpAmount == 0) revert LiquidityPool__CantBeZero();
-        amount0 = lpAmount * reserve0 / totalSupply();
-        amount1 = lpAmount * reserve1 / totalSupply();
-        if (amount0 == 0) revert LiquidityPool__CantBeZero();
-        if (amount1 == 0) revert LiquidityPool__CantBeZero();
-        _burn(msg.sender, lpAmount);
-        _updateReserves(reserve0 - amount0, reserve1 - amount1);
-        IERC20(token0).safeTransfer(msg.sender, amount0);
-        IERC20(token1).safeTransfer(msg.sender, amount1);
-        emit LiquidityRemoved(msg.sender, amount0, amount1, lpAmount);
+    function burn(address to) external nonReentrant returns (uint256 amount0, uint256 amount1) {
+        uint256 liquidity = balanceOf(address(this));
+
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+
+        amount0 = liquidity * balance0 / totalSupply();
+        amount1 = liquidity * balance1 / totalSupply();
+
+        if (amount0 == 0 || amount1 == 0) revert LiquidityPool__CantBeZero();
+        _burn(address(this), liquidity);
+        IERC20(token0).safeTransfer(to, amount0);
+        IERC20(token1).safeTransfer(to, amount1);
+        _updateReserves(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)));
+        emit LiquidityRemoved(msg.sender, amount0, amount1, liquidity);
     }
 
     function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)

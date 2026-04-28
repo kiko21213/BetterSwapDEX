@@ -10,24 +10,24 @@ contract LiquidityPoolTest is ProjectSetUp {
     function _seedLiquidity() internal {
         tokenA.mint(address(this), INITIAL_LIQUIDITY);
         tokenB.mint(address(this), INITIAL_LIQUIDITY);
-        tokenA.approve(address(pool), INITIAL_LIQUIDITY);
-        tokenB.approve(address(pool), INITIAL_LIQUIDITY);
-        pool.addLiquidity(INITIAL_LIQUIDITY, INITIAL_LIQUIDITY);
+        assertTrue(tokenA.transfer(address(pool), INITIAL_LIQUIDITY));
+        assertTrue(tokenB.transfer(address(pool), INITIAL_LIQUIDITY));
+        pool.mint(address(this));
     }
 
-    function test_addLiquidity() public {
+    function test_mint() public {
         _seedLiquidity();
         assertEq(pool.reserve0(), INITIAL_LIQUIDITY);
         assertEq(pool.reserve1(), INITIAL_LIQUIDITY);
         assertGt(pool.balanceOf(address(this)), 0);
     }
 
-    function test_AddLiquidity_revertZero() public {
+    function test_mint_revertZero() public {
         vm.expectRevert(LiquidityPool.LiquidityPool__CantBeZero.selector);
-        pool.addLiquidity(0, 0);
+        pool.mint(address(this));
     }
 
-    function test_addLiquidity_secondDeposit() public {
+    function test_mint_secondDeposit() public {
         _seedLiquidity();
 
         address another = makeAddr("Another");
@@ -36,9 +36,9 @@ contract LiquidityPoolTest is ProjectSetUp {
         tokenA.mint(another, amount);
         tokenB.mint(another, amount);
         vm.startPrank(another);
-        tokenA.approve(address(pool), amount);
-        tokenB.approve(address(pool), amount);
-        pool.addLiquidity(amount, amount);
+        assertTrue(tokenA.transfer(address(pool), amount));
+        assertTrue(tokenB.transfer(address(pool), amount));
+        pool.mint(another);
         vm.stopPrank();
 
         assertEq(pool.reserve0(), INITIAL_LIQUIDITY + amount);
@@ -47,13 +47,14 @@ contract LiquidityPoolTest is ProjectSetUp {
         assertGt(pool.balanceOf(another), 0);
     }
 
-    function test_removeLiquidity() public {
+    function test_burn() public {
         _seedLiquidity();
         uint256 lpBalance = pool.balanceOf(address(this));
         uint256 balanceABefore = tokenA.balanceOf(address(this));
         uint256 balanceBBefore = tokenB.balanceOf(address(this));
 
-        pool.removeLiquidity(lpBalance);
+        assertTrue(pool.transfer(address(pool), lpBalance));
+        pool.burn(address(this));
 
         assertEq(pool.balanceOf(address(this)), 0);
 
@@ -62,6 +63,12 @@ contract LiquidityPoolTest is ProjectSetUp {
 
         assertLt(pool.reserve0(), INITIAL_LIQUIDITY);
         assertLt(pool.reserve1(), INITIAL_LIQUIDITY);
+    }
+
+    function test_burn_revertCantBeZero() public {
+        _seedLiquidity();
+        vm.expectRevert(LiquidityPool.LiquidityPool__CantBeZero.selector);
+        pool.burn(address(this));
     }
 
     function test_getAmountOut() public view {

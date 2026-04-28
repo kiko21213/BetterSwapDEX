@@ -2,7 +2,6 @@
 pragma solidity ^0.8.29;
 
 import {ProjectSetUp} from "test/unit/ProjectSetUp.t.sol";
-import {LiquidityPool} from "src/core/LiquidityPool.sol";
 
 contract LiquidityPoolFuzzTest is ProjectSetUp {
     uint256 constant INITIAL_LIQUIDITY = 1000 ether;
@@ -10,9 +9,9 @@ contract LiquidityPoolFuzzTest is ProjectSetUp {
     function _seedLiquidity() internal {
         tokenA.mint(address(this), INITIAL_LIQUIDITY);
         tokenB.mint(address(this), INITIAL_LIQUIDITY);
-        tokenA.approve(address(pool), INITIAL_LIQUIDITY);
-        tokenB.approve(address(pool), INITIAL_LIQUIDITY);
-        pool.addLiquidity(INITIAL_LIQUIDITY, INITIAL_LIQUIDITY);
+        assertTrue(tokenA.transfer(address(pool), INITIAL_LIQUIDITY));
+        assertTrue(tokenB.transfer(address(pool), INITIAL_LIQUIDITY));
+        pool.mint(address(this));
     }
 
     function testFuzz_swapInvariant(uint256 amountIn) public {
