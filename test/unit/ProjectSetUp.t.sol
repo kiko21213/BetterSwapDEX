@@ -21,7 +21,7 @@ contract ProjectSetUp is Test {
         tokenB = new MockERC20("Token B", "TKB");
         pool = new LiquidityPool(address(tokenA), address(tokenB));
         factory = new PoolFactory();
-        router = new Router();
+        router = new Router(address(factory));
         token = new DEXToken(address(this));
     }
 
