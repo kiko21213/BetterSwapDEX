@@ -16,7 +16,7 @@ contract ProjectSetUp is Test {
     MockERC20 internal tokenB;
     DEXToken internal token;
 
-    function setUp() public {
+    function setUp() public virtual {
         tokenA = new MockERC20("Token A", "TKA");
         tokenB = new MockERC20("Token B", "TKB");
         pool = new LiquidityPool(address(tokenA), address(tokenB));
