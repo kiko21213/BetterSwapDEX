@@ -2,8 +2,11 @@
 pragma solidity ^0.8.29;
 import {PoolFactory} from "src/core/PoolFactory.sol";
 import {LiquidityPool} from "src/core/LiquidityPool.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Router {
+    using SafeERC20 for IERC20;
     PoolFactory public immutable factory;
 
     error Router__PoolNotFound();
@@ -15,6 +18,22 @@ contract Router {
     constructor(address _factory) {
         if (_factory == address(0)) revert Router__ZeroAddress();
         factory = PoolFactory(_factory);
+    }
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to
+    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+        address pair;
+        (amountA, amountB, pair) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
+        IERC20(tokenA).safeTransferFrom(msg.sender, pair, amountA);
+        IERC20(tokenB).safeTransferFrom(msg.sender, pair, amountB);
+        liquidity = LiquidityPool(pair).mint(to);
     }
 
     function _quote(uint256 amountA, uint256 reserveA, uint256 reserveB) internal pure returns (uint256 amountB) {
