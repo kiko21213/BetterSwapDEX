@@ -17,11 +17,10 @@ contract RouterTest is ProjectSetUp {
         tokenA.mint(address(this), amount0);
         tokenB.mint(address(this), amount1);
         tokenA.approve(address(router), amount0);
-        tokenB.approve(address(router), amount1);  
+        tokenB.approve(address(router), amount1);
 
         router.addLiquidity(address(tokenA), address(tokenB), amount0, amount1, 0, 0, address(this));
     }
-
 
     function test_addLiquidity_firstMint() public {
         uint256 amount = 1000 ether;
@@ -54,13 +53,8 @@ contract RouterTest is ProjectSetUp {
         tokenA.approve(address(router), desiredA);
         tokenB.approve(address(router), desiredB);
 
-        (uint256 amountA, uint256 amountB, ) = router.addLiquidity(
-            address(tokenA), 
-            address(tokenB), 
-            desiredA, 
-            desiredB, 
-            0, 0, address(this));
-            
+        (uint256 amountA, uint256 amountB,) =
+            router.addLiquidity(address(tokenA), address(tokenB), desiredA, desiredB, 0, 0, address(this));
 
         assertEq(amountA, 50 ether);
         assertEq(amountB, 100 ether);
@@ -80,12 +74,8 @@ contract RouterTest is ProjectSetUp {
         tokenA.approve(address(router), desiredA);
         tokenB.approve(address(router), desiredB);
 
-        (uint256 amountA, uint256 amountB,) = router.addLiquidity(
-            address(tokenA), address(tokenB),
-            desiredA, desiredB,
-            0, 0,
-            address(this)
-        );
+        (uint256 amountA, uint256 amountB,) =
+            router.addLiquidity(address(tokenA), address(tokenB), desiredA, desiredB, 0, 0, address(this));
         assertEq(amountA, 100 ether);
         assertEq(amountB, 200 ether);
         assertEq(tokenA.balanceOf(address(this)), 100 ether);
@@ -93,20 +83,17 @@ contract RouterTest is ProjectSetUp {
     }
 
     function test_addLiquidity_revertSlippageB() public {
-
         _seedRouter(100 ether, 200 ether);
 
         tokenA.mint(address(this), 50 ether);
         tokenB.mint(address(this), 200 ether);
         tokenA.approve(address(router), 50 ether);
         tokenB.approve(address(router), 200 ether);
-        
+
         vm.expectRevert(Router.Router__InsufficientBAmount.selector);
-        router.addLiquidity(address(tokenA), address(tokenB),
-            50 ether, 200 ether,
-            0, 120 ether,
-            address(this));
+        router.addLiquidity(address(tokenA), address(tokenB), 50 ether, 200 ether, 0, 120 ether, address(this));
     }
+
     function test_addLiquidity_revertSlippageA() public {
         _seedRouter(100 ether, 200 ether);
 
@@ -116,22 +103,13 @@ contract RouterTest is ProjectSetUp {
         tokenB.approve(address(router), 200 ether);
 
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.addLiquidity(address(tokenA), address(tokenB),
-            2000 ether, 200 ether,
-            150 ether, 0,
-            address(this));
-    
-        
+        router.addLiquidity(address(tokenA), address(tokenB), 2000 ether, 200 ether, 150 ether, 0, address(this));
     }
 
     function test_addLiquidity_revertPoolNotFound() public {
         MockERC20 tokenC = new MockERC20("Token C", "TKC");
 
         vm.expectRevert(Router.Router__PoolNotFound.selector);
-        router.addLiquidity(address(tokenA), address(tokenC),
-            50 ether, 200 ether,
-            0, 0,
-            address(this));
-    
+        router.addLiquidity(address(tokenA), address(tokenC), 50 ether, 200 ether, 0, 0, address(this));
     }
 }
