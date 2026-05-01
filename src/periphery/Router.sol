@@ -101,4 +101,32 @@ contract Router {
         if (amountA < amountAMin) revert Router__InsufficientAAmount();
         if (amountB < amountBMin) revert Router__InsufficientBAmount();
     }
+
+    function _getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
+        internal
+        pure
+        returns (uint256 amountOut)
+    {
+        uint256 amountInWithFee = amountIn * 997;
+        amountOut = (amountInWithFee * reserveOut) / (reserveIn * 1000 + amountInWithFee);
+    }
+
+    function swapExactTokensForTokens(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address to
+    ) external returns (uint256 amountOut) {
+        address pair = factory.getPools(tokenIn, tokenOut);
+        if (pair == address(0)) revert Router__PoolNotFound();
+
+        (uint256 reserveIn, uint256 reserveOut) = _getReserves(pair, tokenIn, tokenOut);
+        amountOut = _getAmountOut(amountIn, reserveIn, reserveOut);
+        if (amountOut < amountOutMin) revert Router__InsufficientAAmount();
+        IERC20(tokenIn).safeTransferFrom(msg.sender, pair, amountIn);
+        (uint256 amount0Out, uint256 amount1Out) =
+            tokenIn < tokenOut ? (uint256(0), amountOut) : (amountOut, uint256(0));
+        LiquidityPool(pair).swap(amount0Out, amount1Out, to);
+    }
 }
