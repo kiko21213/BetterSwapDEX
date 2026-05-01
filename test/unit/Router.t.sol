@@ -103,7 +103,7 @@ contract RouterTest is ProjectSetUp {
         tokenB.approve(address(router), 200 ether);
 
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.addLiquidity(address(tokenA), address(tokenB), 2000 ether, 200 ether, 150 ether, 0, address(this));
+        router.addLiquidity(address(tokenA), address(tokenB), 200 ether, 200 ether, 150 ether, 0, address(this));
     }
 
     function test_addLiquidity_revertPoolNotFound() public {

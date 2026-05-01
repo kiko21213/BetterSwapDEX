@@ -83,4 +83,22 @@ contract Router {
             }
         }
     }
+
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to
+    ) external returns (uint256 amountA, uint256 amountB) {
+        address pair = factory.getPools(tokenA, tokenB);
+        if (pair == address(0)) revert Router__PoolNotFound();
+
+        IERC20(pair).safeTransferFrom(msg.sender, pair, liquidity);
+        (uint256 amount0, uint256 amount1) = LiquidityPool(pair).burn(to);
+        (amountA, amountB) = tokenA < tokenB ? (amount0, amount1) : (amount1, amount0);
+        if (amountA < amountAMin) revert Router__InsufficientAAmount();
+        if (amountB < amountBMin) revert Router__InsufficientBAmount();
+    }
 }
