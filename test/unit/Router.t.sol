@@ -112,4 +112,42 @@ contract RouterTest is ProjectSetUp {
         vm.expectRevert(Router.Router__PoolNotFound.selector);
         router.addLiquidity(address(tokenA), address(tokenC), 50 ether, 200 ether, 0, 0, address(this));
     }
+
+    function test_removeLiquidity_happyPath() public {
+        _seedRouter(100 ether, 200 ether);
+        uint256 liquidity = pool.balanceOf(address(this));
+        pool.approve(address(router), liquidity);
+        (uint256 amountA, uint256 amountB) =
+            router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 0, 0, address(this));
+
+        assertApproxEqAbs(amountA, 100 ether, 1500);
+        assertApproxEqAbs(amountB, 200 ether, 1500);
+        assertEq(pool.balanceOf(address(this)), 0);
+        assertApproxEqAbs(tokenA.balanceOf(address(this)), 100 ether, 1500);
+        assertApproxEqAbs(tokenB.balanceOf(address(this)), 200 ether, 1500);
+    }
+
+    function test_removeLiquidity_revertPoolNotFound() public {
+        MockERC20 tokenC = new MockERC20("Token C", "TKC");
+        uint256 liquidity = pool.balanceOf(address(this));
+        pool.approve(address(router), liquidity);
+        vm.expectRevert(Router.Router__PoolNotFound.selector);
+        router.removeLiquidity(address(tokenA), address(tokenC), liquidity, 0, 0, address(this));
+    }
+
+    function test_removeLiquidity_revertInsufficientAAmount() public {
+        _seedRouter(100 ether, 200 ether);
+        uint256 liquidity = pool.balanceOf(address(this));
+        pool.approve(address(router), liquidity);
+        vm.expectRevert(Router.Router__InsufficientAAmount.selector);
+        router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 150 ether, 0, address(this));
+    }
+
+    function test_removeLiquidity_revertInsufficientBAmount() public {
+        _seedRouter(100 ether, 200 ether);
+        uint256 liquidity = pool.balanceOf(address(this));
+        pool.approve(address(router), liquidity);
+        vm.expectRevert(Router.Router__InsufficientBAmount.selector);
+        router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 0, 250 ether, address(this));
+    }
 }
