@@ -150,4 +150,47 @@ contract RouterTest is ProjectSetUp {
         vm.expectRevert(Router.Router__InsufficientBAmount.selector);
         router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 0, 250 ether, address(this));
     }
+
+    function test_swap_happyPath() public {
+        _seedRouter(100 ether, 200 ether);
+
+        tokenA.mint(address(this), 10 ether);
+        tokenA.approve(address(router), 10 ether);
+
+        uint256 amountOut =
+            router.swapExactTokensForTokens(address(tokenA), address(tokenB), 10 ether, 0 ether, address(this));
+
+        assertEq(tokenA.balanceOf(address(this)), 0);
+        assertGt(tokenB.balanceOf(address(this)), 0);
+        assertGt(amountOut, 0);
+        assertGt(pool.reserve0(), 100 ether);
+    }
+
+    function test_swap_revertPoolNotFound() public {
+        MockERC20 tokenC = new MockERC20("Token C", "TKC");
+        vm.expectRevert(Router.Router__PoolNotFound.selector);
+        router.swapExactTokensForTokens(address(tokenA), address(tokenC), 1 ether, 0 ether, address(this));
+    }
+
+    function test_swap_revertInsufficientAAmount() public {
+        _seedRouter(100 ether, 200 ether);
+        tokenA.mint(address(this), 1 ether);
+        tokenA.approve(address(router), 1 ether);
+        vm.expectRevert(Router.Router__InsufficientAAmount.selector);
+        router.swapExactTokensForTokens(address(tokenA), address(tokenB), 1 ether, 100 ether, address(this));
+    }
+
+    function test_swap_amountOutWithFee() public {
+        _seedRouter(100 ether, 200 ether);
+        tokenA.mint(address(this), 10 ether);
+        tokenA.approve(address(router), 10 ether);
+
+        uint256 amountOutWithFee = 10 ether * 997;
+
+        uint256 expectedOut = (amountOutWithFee * 200 ether) / (100 ether * 1000 + amountOutWithFee);
+        uint256 amountOut =
+            router.swapExactTokensForTokens(address(tokenA), address(tokenB), 10 ether, 0, address(this));
+
+        assertEq(amountOut, expectedOut);
+    }
 }
