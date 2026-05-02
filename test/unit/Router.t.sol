@@ -154,11 +154,12 @@ contract RouterTest is ProjectSetUp {
     function test_swap_happyPath() public {
         _seedRouter(100 ether, 200 ether);
 
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
         tokenA.mint(address(this), 10 ether);
         tokenA.approve(address(router), 10 ether);
-
-        uint256 amountOut =
-            router.swapExactTokensForTokens(address(tokenA), address(tokenB), 10 ether, 0 ether, address(this));
+        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
 
         assertEq(tokenA.balanceOf(address(this)), 0);
         assertGt(tokenB.balanceOf(address(this)), 0);
@@ -168,28 +169,36 @@ contract RouterTest is ProjectSetUp {
 
     function test_swap_revertPoolNotFound() public {
         MockERC20 tokenC = new MockERC20("Token C", "TKC");
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenC);
         vm.expectRevert(Router.Router__PoolNotFound.selector);
-        router.swapExactTokensForTokens(address(tokenA), address(tokenC), 1 ether, 0 ether, address(this));
+        router.swapExactTokensForTokens(1 ether, 0, path, address(this));
     }
 
     function test_swap_revertInsufficientAAmount() public {
         _seedRouter(100 ether, 200 ether);
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
         tokenA.mint(address(this), 1 ether);
         tokenA.approve(address(router), 1 ether);
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.swapExactTokensForTokens(address(tokenA), address(tokenB), 1 ether, 100 ether, address(this));
+        router.swapExactTokensForTokens(1 ether, 100 ether, path, address(this));
     }
 
     function test_swap_amountOutWithFee() public {
         _seedRouter(100 ether, 200 ether);
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
         tokenA.mint(address(this), 10 ether);
         tokenA.approve(address(router), 10 ether);
 
         uint256 amountOutWithFee = 10 ether * 997;
 
         uint256 expectedOut = (amountOutWithFee * 200 ether) / (100 ether * 1000 + amountOutWithFee);
-        uint256 amountOut =
-            router.swapExactTokensForTokens(address(tokenA), address(tokenB), 10 ether, 0, address(this));
+        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
 
         assertEq(amountOut, expectedOut);
     }
