@@ -202,4 +202,30 @@ contract RouterTest is ProjectSetUp {
 
         assertEq(amountOut, expectedOut);
     }
+
+    function test_swap_multiHop() public {
+        MockERC20 tokenC = new MockERC20("Token C", "TKC");
+        factory.createPool(address(tokenB), address(tokenC));
+
+        _seedRouter(100 ether, 200 ether);
+
+        tokenA.mint(address(this), 10 ether);
+        tokenA.approve(address(router), 10 ether);
+        tokenB.mint(address(this), 200 ether);
+        tokenB.approve(address(router), 200 ether);
+        tokenC.mint(address(this), 300 ether);
+        tokenC.approve(address(router), 300 ether);
+
+        router.addLiquidity(address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this));
+        address[] memory path = new address[](3);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        path[2] = address(tokenC);
+        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
+
+        assertEq(tokenA.balanceOf(address(this)), 0);
+        assertEq(tokenB.balanceOf(address(this)), 0);
+        assertGt(tokenC.balanceOf(address(this)), 0);
+        assertGt(amountOut, 0);
+    }
 }
