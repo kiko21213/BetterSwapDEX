@@ -111,22 +111,34 @@ contract Router {
         amountOut = (amountInWithFee * reserveOut) / (reserveIn * 1000 + amountInWithFee);
     }
 
-    function swapExactTokensForTokens(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address to
-    ) external returns (uint256 amountOut) {
-        address pair = factory.getPools(tokenIn, tokenOut);
+    function _getAmountsOut(uint256 amountIn, address[] memory path) internal view returns (uint256[] memory amounts) {
+        amounts = new uint256[](path.length);
+        amounts[0] = amountIn;
+        for (uint256 i; i < path.length - 1; i++) {
+            (uint256 reserveIn, uint256 reserveOut) =
+                _getReserves(factory.getPools(path[i], path[i + 1]), path[i], path[i + 1]);
+            amounts[i + 1] = _getAmountOut(amounts[i], reserveIn, reserveOut);
+        }
+        return amounts;
+    }
+
+    function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to)
+        external
+        returns (uint256 amountOut)
+    {
+        address pair = factory.getPools(path[0], path[1]);
         if (pair == address(0)) revert Router__PoolNotFound();
 
-        (uint256 reserveIn, uint256 reserveOut) = _getReserves(pair, tokenIn, tokenOut);
-        amountOut = _getAmountOut(amountIn, reserveIn, reserveOut);
+        uint256[] memory amounts = _getAmountsOut(amountIn, path);
+        amountOut = amounts[amounts.length - 1];
         if (amountOut < amountOutMin) revert Router__InsufficientAAmount();
-        IERC20(tokenIn).safeTransferFrom(msg.sender, pair, amountIn);
-        (uint256 amount0Out, uint256 amount1Out) =
-            tokenIn < tokenOut ? (uint256(0), amountOut) : (amountOut, uint256(0));
-        LiquidityPool(pair).swap(amount0Out, amount1Out, to);
+        IERC20(path[0]).safeTransferFrom(msg.sender, pair, amountIn);
+        for (uint256 i; i < path.length - 1; i++) {
+            address _pair = factory.getPools(path[i], path[i + 1]);
+            address recipient = i < path.length - 2 ? factory.getPools(path[i + 1], path[i + 2]) : to;
+            (uint256 amount0Out, uint256 amount1Out) =
+                path[i] < path[i + 1] ? (uint256(0), amounts[i + 1]) : (amounts[i + 1], uint256(0));
+            LiquidityPool(_pair).swap(amount0Out, amount1Out, recipient);
+        }
     }
 }
