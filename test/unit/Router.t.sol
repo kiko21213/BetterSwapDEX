@@ -203,7 +203,7 @@ contract RouterTest is ProjectSetUp {
         assertEq(amountOut, expectedOut);
     }
 
-    function test_swap_multiHop() public {
+    function test_swap_multiHop_exactAmountOut() public {
         MockERC20 tokenC = new MockERC20("Token C", "TKC");
         factory.createPool(address(tokenB), address(tokenC));
 
@@ -221,11 +221,76 @@ contract RouterTest is ProjectSetUp {
         path[0] = address(tokenA);
         path[1] = address(tokenB);
         path[2] = address(tokenC);
+
+        uint256 amountInWithFee1 = 10 ether * 997;
+        uint256 amountOut1 = (amountInWithFee1 * 200 ether) / (100 ether * 1000 + amountInWithFee1);
+
+        uint256 amountInWithFee2 = amountOut1 * 997;
+        uint256 expectedOut = (amountInWithFee2 * 300 ether) / (200 ether * 1000 + amountInWithFee2);
+
         uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
 
+        assertEq(amountOut, expectedOut);
         assertEq(tokenA.balanceOf(address(this)), 0);
         assertEq(tokenB.balanceOf(address(this)), 0);
-        assertGt(tokenC.balanceOf(address(this)), 0);
-        assertGt(amountOut, 0);
+        assertEq(tokenC.balanceOf(address(this)), expectedOut);
+    }
+
+    function test_swap_multiHop_revertSlippage() public {
+        MockERC20 tokenC = new MockERC20("Token C", "TKC");
+        factory.createPool(address(tokenB), address(tokenC));
+
+        _seedRouter(100 ether, 200 ether);
+
+        tokenA.mint(address(this), 10 ether);
+        tokenA.approve(address(router), 10 ether);
+        tokenB.mint(address(this), 200 ether);
+        tokenB.approve(address(router), 200 ether);
+        tokenC.mint(address(this), 300 ether);
+        tokenC.approve(address(router), 300 ether);
+
+        router.addLiquidity(address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this));
+        address[] memory path = new address[](3);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        path[2] = address(tokenC);
+
+        vm.expectRevert(Router.Router__InsufficientAAmount.selector);
+        router.swapExactTokensForTokens(10 ether, 1000 ether, path, address(this));
+    }
+
+    function test_swap_multiHop_reservesUpdated() public {
+        MockERC20 tokenC = new MockERC20("Token C", "TKC");
+        factory.createPool(address(tokenB), address(tokenC));
+
+        _seedRouter(100 ether, 200 ether);
+
+        tokenA.mint(address(this), 10 ether);
+        tokenA.approve(address(router), 10 ether);
+        tokenB.mint(address(this), 200 ether);
+        tokenB.approve(address(router), 200 ether);
+        tokenC.mint(address(this), 300 ether);
+        tokenC.approve(address(router), 300 ether);
+
+        router.addLiquidity(address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this));
+        LiquidityPool poolBC = LiquidityPool(factory.getPools(address(tokenB), address(tokenC)));
+
+        address[] memory path = new address[](3);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        path[2] = address(tokenC);
+
+        uint256 amountInWithFee1 = 10 ether * 997;
+        uint256 amountOut1 = (amountInWithFee1 * 200 ether) / (100 ether * 1000 + amountInWithFee1);
+
+        uint256 amountInWithFee2 = amountOut1 * 997;
+        uint256 expectedOut = (amountInWithFee2 * 300 ether) / (200 ether * 1000 + amountInWithFee2);
+
+        router.swapExactTokensForTokens(10 ether, 0, path, address(this));
+
+        assertEq(tokenA.balanceOf(address(pool)), 100 ether + 10 ether);
+        assertEq(tokenB.balanceOf(address(pool)), 200 ether - amountOut1);
+        assertEq(tokenB.balanceOf(address(poolBC)), 200 ether + amountOut1);
+        assertEq(tokenC.balanceOf(address(poolBC)), 300 ether - expectedOut);
     }
 }
