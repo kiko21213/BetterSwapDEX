@@ -14,6 +14,12 @@ contract Router {
     error Router__CantBeZero();
     error Router__InsufficientBAmount();
     error Router__InsufficientAAmount();
+    error Router__Expired();
+
+    modifier ensure(uint256 deadline) {
+        if (deadline < block.timestamp) revert Router__Expired();
+        _;
+    }
 
     constructor(address _factory) {
         if (_factory == address(0)) revert Router__ZeroAddress();
@@ -27,8 +33,9 @@ contract Router {
         uint256 amountBDesired,
         uint256 amountAMin,
         uint256 amountBMin,
-        address to
-    ) external returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
+        address to,
+        uint256 deadline
+    ) external ensure(deadline) returns (uint256 amountA, uint256 amountB, uint256 liquidity) {
         address pair;
         (amountA, amountB, pair) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
         IERC20(tokenA).safeTransferFrom(msg.sender, pair, amountA);
@@ -90,8 +97,9 @@ contract Router {
         uint256 liquidity,
         uint256 amountAMin,
         uint256 amountBMin,
-        address to
-    ) external returns (uint256 amountA, uint256 amountB) {
+        address to,
+        uint256 deadline
+    ) external ensure(deadline) returns (uint256 amountA, uint256 amountB) {
         address pair = factory.getPools(tokenA, tokenB);
         if (pair == address(0)) revert Router__PoolNotFound();
 
@@ -122,10 +130,13 @@ contract Router {
         return amounts;
     }
 
-    function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to)
-        external
-        returns (uint256 amountOut)
-    {
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external ensure(deadline) returns (uint256 amountOut) {
         address pair = factory.getPools(path[0], path[1]);
         if (pair == address(0)) revert Router__PoolNotFound();
 

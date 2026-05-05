@@ -19,7 +19,7 @@ contract RouterTest is ProjectSetUp {
         tokenA.approve(address(router), amount0);
         tokenB.approve(address(router), amount1);
 
-        router.addLiquidity(address(tokenA), address(tokenB), amount0, amount1, 0, 0, address(this));
+        router.addLiquidity(address(tokenA), address(tokenB), amount0, amount1, 0, 0, address(this), block.timestamp);
     }
 
     function test_addLiquidity_firstMint() public {
@@ -32,7 +32,7 @@ contract RouterTest is ProjectSetUp {
         tokenB.approve(address(router), amount);
 
         (uint256 amountA, uint256 amountB, uint256 liquidity) =
-            router.addLiquidity(address(tokenA), address(tokenB), amount, amount, 0, 0, address(this));
+            router.addLiquidity(address(tokenA), address(tokenB), amount, amount, 0, 0, address(this), block.timestamp);
 
         assertGt(liquidity, 0);
         assertEq(amountA, amount);
@@ -53,8 +53,9 @@ contract RouterTest is ProjectSetUp {
         tokenA.approve(address(router), desiredA);
         tokenB.approve(address(router), desiredB);
 
-        (uint256 amountA, uint256 amountB,) =
-            router.addLiquidity(address(tokenA), address(tokenB), desiredA, desiredB, 0, 0, address(this));
+        (uint256 amountA, uint256 amountB,) = router.addLiquidity(
+            address(tokenA), address(tokenB), desiredA, desiredB, 0, 0, address(this), block.timestamp
+        );
 
         assertEq(amountA, 50 ether);
         assertEq(amountB, 100 ether);
@@ -74,8 +75,9 @@ contract RouterTest is ProjectSetUp {
         tokenA.approve(address(router), desiredA);
         tokenB.approve(address(router), desiredB);
 
-        (uint256 amountA, uint256 amountB,) =
-            router.addLiquidity(address(tokenA), address(tokenB), desiredA, desiredB, 0, 0, address(this));
+        (uint256 amountA, uint256 amountB,) = router.addLiquidity(
+            address(tokenA), address(tokenB), desiredA, desiredB, 0, 0, address(this), block.timestamp
+        );
         assertEq(amountA, 100 ether);
         assertEq(amountB, 200 ether);
         assertEq(tokenA.balanceOf(address(this)), 100 ether);
@@ -91,7 +93,9 @@ contract RouterTest is ProjectSetUp {
         tokenB.approve(address(router), 200 ether);
 
         vm.expectRevert(Router.Router__InsufficientBAmount.selector);
-        router.addLiquidity(address(tokenA), address(tokenB), 50 ether, 200 ether, 0, 120 ether, address(this));
+        router.addLiquidity(
+            address(tokenA), address(tokenB), 50 ether, 200 ether, 0, 120 ether, address(this), block.timestamp
+        );
     }
 
     function test_addLiquidity_revertSlippageA() public {
@@ -103,14 +107,16 @@ contract RouterTest is ProjectSetUp {
         tokenB.approve(address(router), 200 ether);
 
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.addLiquidity(address(tokenA), address(tokenB), 200 ether, 200 ether, 150 ether, 0, address(this));
+        router.addLiquidity(
+            address(tokenA), address(tokenB), 200 ether, 200 ether, 150 ether, 0, address(this), block.timestamp
+        );
     }
 
     function test_addLiquidity_revertPoolNotFound() public {
         MockERC20 tokenC = new MockERC20("Token C", "TKC");
 
         vm.expectRevert(Router.Router__PoolNotFound.selector);
-        router.addLiquidity(address(tokenA), address(tokenC), 50 ether, 200 ether, 0, 0, address(this));
+        router.addLiquidity(address(tokenA), address(tokenC), 50 ether, 200 ether, 0, 0, address(this), block.timestamp);
     }
 
     function test_removeLiquidity_happyPath() public {
@@ -118,7 +124,7 @@ contract RouterTest is ProjectSetUp {
         uint256 liquidity = pool.balanceOf(address(this));
         pool.approve(address(router), liquidity);
         (uint256 amountA, uint256 amountB) =
-            router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 0, 0, address(this));
+            router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 0, 0, address(this), block.timestamp);
 
         assertApproxEqAbs(amountA, 100 ether, 1500);
         assertApproxEqAbs(amountB, 200 ether, 1500);
@@ -132,7 +138,7 @@ contract RouterTest is ProjectSetUp {
         uint256 liquidity = pool.balanceOf(address(this));
         pool.approve(address(router), liquidity);
         vm.expectRevert(Router.Router__PoolNotFound.selector);
-        router.removeLiquidity(address(tokenA), address(tokenC), liquidity, 0, 0, address(this));
+        router.removeLiquidity(address(tokenA), address(tokenC), liquidity, 0, 0, address(this), block.timestamp);
     }
 
     function test_removeLiquidity_revertInsufficientAAmount() public {
@@ -140,7 +146,9 @@ contract RouterTest is ProjectSetUp {
         uint256 liquidity = pool.balanceOf(address(this));
         pool.approve(address(router), liquidity);
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 150 ether, 0, address(this));
+        router.removeLiquidity(
+            address(tokenA), address(tokenB), liquidity, 150 ether, 0, address(this), block.timestamp
+        );
     }
 
     function test_removeLiquidity_revertInsufficientBAmount() public {
@@ -148,7 +156,9 @@ contract RouterTest is ProjectSetUp {
         uint256 liquidity = pool.balanceOf(address(this));
         pool.approve(address(router), liquidity);
         vm.expectRevert(Router.Router__InsufficientBAmount.selector);
-        router.removeLiquidity(address(tokenA), address(tokenB), liquidity, 0, 250 ether, address(this));
+        router.removeLiquidity(
+            address(tokenA), address(tokenB), liquidity, 0, 250 ether, address(this), block.timestamp
+        );
     }
 
     function test_swap_happyPath() public {
@@ -159,7 +169,7 @@ contract RouterTest is ProjectSetUp {
         path[1] = address(tokenB);
         tokenA.mint(address(this), 10 ether);
         tokenA.approve(address(router), 10 ether);
-        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
+        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this), block.timestamp);
 
         assertEq(tokenA.balanceOf(address(this)), 0);
         assertGt(tokenB.balanceOf(address(this)), 0);
@@ -173,7 +183,7 @@ contract RouterTest is ProjectSetUp {
         path[0] = address(tokenA);
         path[1] = address(tokenC);
         vm.expectRevert(Router.Router__PoolNotFound.selector);
-        router.swapExactTokensForTokens(1 ether, 0, path, address(this));
+        router.swapExactTokensForTokens(1 ether, 0, path, address(this), block.timestamp);
     }
 
     function test_swap_revertInsufficientAAmount() public {
@@ -184,7 +194,7 @@ contract RouterTest is ProjectSetUp {
         tokenA.mint(address(this), 1 ether);
         tokenA.approve(address(router), 1 ether);
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.swapExactTokensForTokens(1 ether, 100 ether, path, address(this));
+        router.swapExactTokensForTokens(1 ether, 100 ether, path, address(this), block.timestamp);
     }
 
     function test_swap_amountOutWithFee() public {
@@ -198,7 +208,7 @@ contract RouterTest is ProjectSetUp {
         uint256 amountOutWithFee = 10 ether * 997;
 
         uint256 expectedOut = (amountOutWithFee * 200 ether) / (100 ether * 1000 + amountOutWithFee);
-        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
+        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this), block.timestamp);
 
         assertEq(amountOut, expectedOut);
     }
@@ -216,7 +226,9 @@ contract RouterTest is ProjectSetUp {
         tokenC.mint(address(this), 300 ether);
         tokenC.approve(address(router), 300 ether);
 
-        router.addLiquidity(address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this));
+        router.addLiquidity(
+            address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this), block.timestamp
+        );
         address[] memory path = new address[](3);
         path[0] = address(tokenA);
         path[1] = address(tokenB);
@@ -228,7 +240,7 @@ contract RouterTest is ProjectSetUp {
         uint256 amountInWithFee2 = amountOut1 * 997;
         uint256 expectedOut = (amountInWithFee2 * 300 ether) / (200 ether * 1000 + amountInWithFee2);
 
-        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this));
+        uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this), block.timestamp);
 
         assertEq(amountOut, expectedOut);
         assertEq(tokenA.balanceOf(address(this)), 0);
@@ -249,14 +261,16 @@ contract RouterTest is ProjectSetUp {
         tokenC.mint(address(this), 300 ether);
         tokenC.approve(address(router), 300 ether);
 
-        router.addLiquidity(address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this));
+        router.addLiquidity(
+            address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this), block.timestamp
+        );
         address[] memory path = new address[](3);
         path[0] = address(tokenA);
         path[1] = address(tokenB);
         path[2] = address(tokenC);
 
         vm.expectRevert(Router.Router__InsufficientAAmount.selector);
-        router.swapExactTokensForTokens(10 ether, 1000 ether, path, address(this));
+        router.swapExactTokensForTokens(10 ether, 1000 ether, path, address(this), block.timestamp);
     }
 
     function test_swap_multiHop_reservesUpdated() public {
@@ -272,7 +286,9 @@ contract RouterTest is ProjectSetUp {
         tokenC.mint(address(this), 300 ether);
         tokenC.approve(address(router), 300 ether);
 
-        router.addLiquidity(address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this));
+        router.addLiquidity(
+            address(tokenB), address(tokenC), 200 ether, 300 ether, 0, 0, address(this), block.timestamp
+        );
         LiquidityPool poolBC = LiquidityPool(factory.getPools(address(tokenB), address(tokenC)));
 
         address[] memory path = new address[](3);
@@ -286,7 +302,7 @@ contract RouterTest is ProjectSetUp {
         uint256 amountInWithFee2 = amountOut1 * 997;
         uint256 expectedOut = (amountInWithFee2 * 300 ether) / (200 ether * 1000 + amountInWithFee2);
 
-        router.swapExactTokensForTokens(10 ether, 0, path, address(this));
+        router.swapExactTokensForTokens(10 ether, 0, path, address(this), block.timestamp);
 
         assertEq(tokenA.balanceOf(address(pool)), 100 ether + 10 ether);
         assertEq(tokenB.balanceOf(address(pool)), 200 ether - amountOut1);
