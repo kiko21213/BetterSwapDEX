@@ -5,6 +5,7 @@ import {ProjectSetUp} from "test/unit/ProjectSetUp.t.sol";
 import {LiquidityPool} from "src/core/LiquidityPool.sol";
 import {Router} from "src/periphery/Router.sol";
 import {MockERC20} from "src/mocks/MockERC20.sol";
+import {console} from "forge-std/console.sol";
 
 contract RouterTest is ProjectSetUp {
     function setUp() public override {
@@ -308,5 +309,28 @@ contract RouterTest is ProjectSetUp {
         assertEq(tokenB.balanceOf(address(pool)), 200 ether - amountOut1);
         assertEq(tokenB.balanceOf(address(poolBC)), 200 ether + amountOut1);
         assertEq(tokenC.balanceOf(address(poolBC)), 300 ether - expectedOut);
+    }
+
+    function test_addLiquidity_revertExpired() public {
+        vm.warp(1 minutes);
+
+        vm.expectRevert(Router.Router__Expired.selector);
+        router.addLiquidity(address(tokenA), address(tokenB), 1 ether, 1 ether, 0, 0, address(this), 1 minutes - 1);
+    }
+
+    function test_swap_revertExpired() public {
+        vm.warp(1 minutes);
+        address[] memory path = new address[](2);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+
+        vm.expectRevert(Router.Router__Expired.selector);
+        router.swapExactTokensForTokens(10 ether, 0, path, address(this), 1 minutes - 1);
+    }
+
+    function test_removeLiquidity_revertExpired() public {
+        vm.warp(1 minutes);
+        vm.expectRevert(Router.Router__Expired.selector);
+        router.removeLiquidity(address(tokenA), address(tokenB), 0, 0, 0, address(this), 1 minutes - 1);
     }
 }
