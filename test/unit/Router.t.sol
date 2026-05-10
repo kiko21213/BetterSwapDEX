@@ -34,14 +34,14 @@ contract RouterTest is ProjectSetUp {
 
         (uint256 amountA, uint256 amountB, uint256 liquidity) =
             router.addLiquidity(address(tokenA), address(tokenB), amount, amount, 0, 0, address(this), block.timestamp);
-
+        (uint112 r0, uint112 r1,) = pool.getReserves();
         assertGt(liquidity, 0);
         assertEq(amountA, amount);
         assertEq(amountB, amount);
         assertEq(pool.balanceOf(address(this)), liquidity);
         assertEq(tokenA.balanceOf(address(this)), 0);
         assertEq(tokenB.balanceOf(address(this)), 0);
-        assertEq(pool.reserve0() + pool.reserve1(), 2 * amount);
+        assertEq(r0 + r1, 2 * amount);
     }
 
     function test_addLiquidity_mintOptimalB() public {
@@ -171,11 +171,11 @@ contract RouterTest is ProjectSetUp {
         tokenA.mint(address(this), 10 ether);
         tokenA.approve(address(router), 10 ether);
         uint256 amountOut = router.swapExactTokensForTokens(10 ether, 0, path, address(this), block.timestamp);
-
+        (uint112 r0,,) = pool.getReserves();
         assertEq(tokenA.balanceOf(address(this)), 0);
         assertGt(tokenB.balanceOf(address(this)), 0);
         assertGt(amountOut, 0);
-        assertGt(pool.reserve0(), 100 ether);
+        assertGt(r0, 100 ether);
     }
 
     function test_swap_revertPoolNotFound() public {

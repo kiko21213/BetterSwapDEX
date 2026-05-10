@@ -55,8 +55,7 @@ contract Router {
         returns (uint256 reserveA, uint256 reserveB)
     {
         address token0 = tokenA < tokenB ? tokenA : tokenB;
-        uint256 reserve0 = LiquidityPool(pair).reserve0();
-        uint256 reserve1 = LiquidityPool(pair).reserve1();
+        (uint112 reserve0, uint112 reserve1,) = LiquidityPool(pair).getReserves();
         if (tokenA == token0) {
             (reserveA, reserveB) = (reserve0, reserve1);
         } else {

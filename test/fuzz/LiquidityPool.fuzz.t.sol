@@ -18,8 +18,9 @@ contract LiquidityPoolFuzzTest is ProjectSetUp {
         _seedLiquidity();
         vm.assume(amountIn > 0.01 ether && amountIn < 100 ether);
         address another = makeAddr("another");
-        uint256 amountOut = pool.getAmountOut(amountIn, pool.reserve0(), pool.reserve1());
-        uint256 kBefore = pool.reserve0() * pool.reserve1();
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        uint256 amountOut = pool.getAmountOut(amountIn, r0, r1);
+        uint256 kBefore = uint256(r0) * uint256(r1);
 
         tokenA.mint(another, amountIn);
 
@@ -29,7 +30,7 @@ contract LiquidityPoolFuzzTest is ProjectSetUp {
         assertTrue(isTrue);
 
         pool.swap(0, amountOut, another);
-
-        assertGe(pool.reserve0() * pool.reserve1(), kBefore);
+        (uint112 afterR0, uint112 afterR1,) = pool.getReserves();
+        assertGe(uint256(afterR0) * uint256(afterR1), kBefore);
     }
 }

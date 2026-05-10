@@ -17,8 +17,9 @@ contract LiquidityPoolTest is ProjectSetUp {
 
     function test_mint() public {
         _seedLiquidity();
-        assertEq(pool.reserve0(), INITIAL_LIQUIDITY);
-        assertEq(pool.reserve1(), INITIAL_LIQUIDITY);
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        assertEq(r0, INITIAL_LIQUIDITY);
+        assertEq(r1, INITIAL_LIQUIDITY);
         assertGt(pool.balanceOf(address(this)), 0);
     }
 
@@ -40,9 +41,9 @@ contract LiquidityPoolTest is ProjectSetUp {
         assertTrue(tokenB.transfer(address(pool), amount));
         pool.mint(another);
         vm.stopPrank();
-
-        assertEq(pool.reserve0(), INITIAL_LIQUIDITY + amount);
-        assertEq(pool.reserve1(), INITIAL_LIQUIDITY + amount);
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        assertEq(r0, INITIAL_LIQUIDITY + amount);
+        assertEq(r1, INITIAL_LIQUIDITY + amount);
 
         assertGt(pool.balanceOf(another), 0);
     }
@@ -60,9 +61,9 @@ contract LiquidityPoolTest is ProjectSetUp {
 
         assertGt(tokenA.balanceOf(address(this)), balanceABefore);
         assertGt(tokenB.balanceOf(address(this)), balanceBBefore);
-
-        assertLt(pool.reserve0(), INITIAL_LIQUIDITY);
-        assertLt(pool.reserve1(), INITIAL_LIQUIDITY);
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        assertLt(r0, INITIAL_LIQUIDITY);
+        assertLt(r1, INITIAL_LIQUIDITY);
     }
 
     function test_burn_revertCantBeZero() public {
@@ -87,8 +88,8 @@ contract LiquidityPoolTest is ProjectSetUp {
 
         address another = makeAddr("another");
         uint256 amountIn = 100 ether;
-
-        uint256 amountOut = pool.getAmountOut(amountIn, pool.reserve0(), pool.reserve1());
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        uint256 amountOut = pool.getAmountOut(amountIn, r0, r1);
 
         tokenA.mint(another, amountIn);
         vm.startPrank(another);
@@ -98,8 +99,9 @@ contract LiquidityPoolTest is ProjectSetUp {
         vm.stopPrank();
 
         assertEq(tokenB.balanceOf(another), amountOut);
-        assertGt(pool.reserve0(), INITIAL_LIQUIDITY);
-        assertLt(pool.reserve1(), INITIAL_LIQUIDITY);
+        (uint112 r0After, uint112 r1After,) = pool.getReserves();
+        assertGt(r0After, INITIAL_LIQUIDITY);
+        assertLt(r1After, INITIAL_LIQUIDITY);
     }
 
     function test_swap_revertBroken() public {
@@ -107,8 +109,8 @@ contract LiquidityPoolTest is ProjectSetUp {
 
         address another = makeAddr("another");
         uint256 amountIn = 100 ether;
-
-        uint256 amountOut = pool.getAmountOut(amountIn, pool.reserve0(), pool.reserve1());
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        uint256 amountOut = pool.getAmountOut(amountIn, r0, r1);
 
         tokenA.mint(another, amountIn);
 
