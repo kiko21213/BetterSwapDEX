@@ -121,4 +121,144 @@ contract LiquidityPoolTest is ProjectSetUp {
         vm.expectRevert(LiquidityPool.LiquidityPool__InvariantBroken.selector);
         pool.swap(10, amountOut + 1 ether, another);
     }
+
+    function test_cumulatives_zeroAfterFirstMint() public {
+        _seedLiquidity();
+
+        assertEq(pool.price0CumulativeLast(), 0);
+        assertEq(pool.price1CumulativeLast(), 0);
+        (,, uint32 ts) = pool.getReserves();
+        assertEq(ts, block.timestamp);
+    }
+
+    function test_cumulatives_unchangedInSameBlock() public {
+        _seedLiquidity();
+
+        address another = makeAddr("Another");
+        uint256 amount = 500 ether;
+
+        tokenA.mint(another, amount);
+        tokenB.mint(another, amount);
+        vm.startPrank(another);
+        assertTrue(tokenA.transfer(address(pool), amount));
+        assertTrue(tokenB.transfer(address(pool), amount));
+        pool.mint(another);
+        vm.stopPrank();
+
+        assertEq(pool.price0CumulativeLast(), 0);
+        assertEq(pool.price1CumulativeLast(), 0);
+    }
+
+    function test_cumulatives_accumulateLinearlyOverTime() public {
+        _seedLiquidity();
+        vm.warp(block.timestamp + 36000);
+
+        address another = makeAddr("Another");
+        uint256 amount = 500 ether;
+
+        tokenA.mint(another, amount);
+        tokenB.mint(another, amount);
+        vm.startPrank(another);
+        assertTrue(tokenA.transfer(address(pool), amount));
+        assertTrue(tokenB.transfer(address(pool), amount));
+        pool.mint(another);
+        vm.stopPrank();
+
+        uint256 expected0 = (uint256(1000e18) << 112) / 1000e18 * 36000;
+        uint256 expected1 = (uint256(1000e18) << 112) / 1000e18 * 36000;
+        assertEq(pool.price0CumulativeLast(), expected0);
+        assertEq(pool.price1CumulativeLast(), expected1);
+        (,, uint32 ts) = pool.getReserves();
+        assertEq(ts, block.timestamp);
+    }
+
+    function test_cumulatives_accumulateAtPriceBeforeSwap() public {
+        _seedLiquidity();
+
+        vm.warp(block.timestamp + 36000);
+
+        address another = makeAddr("another");
+        uint256 amountIn = 500 ether;
+        (uint112 r0, uint112 r1,) = pool.getReserves();
+        uint256 amountOut = pool.getAmountOut(amountIn, r0, r1);
+
+        tokenA.mint(another, amountIn);
+        vm.startPrank(another);
+        bool isTrue = tokenA.transfer(address(pool), amountIn);
+        assertTrue(isTrue);
+        pool.swap(0, amountOut, another);
+        vm.stopPrank();
+
+        uint256 expected0 = (uint256(1000e18) << 112) / 1000e18 * 36000;
+        uint256 expected1 = (uint256(1000e18) << 112) / 1000e18 * 36000;
+        assertEq(pool.price0CumulativeLast(), expected0);
+        assertEq(pool.price1CumulativeLast(), expected1);
+        (,, uint32 ts) = pool.getReserves();
+        assertEq(ts, block.timestamp);
+    }
+
+    function test_cumulatives_accumulateAcrossMultipleUpdates() public {
+        _seedLiquidity();
+
+        vm.warp(block.timestamp + 1000);
+        address another = makeAddr("Another");
+        uint256 amount = 500 ether;
+
+        tokenA.mint(another, amount);
+        tokenB.mint(another, amount);
+        vm.startPrank(another);
+        assertTrue(tokenA.transfer(address(pool), amount));
+        assertTrue(tokenB.transfer(address(pool), amount));
+        pool.mint(another);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 2000);
+        address anotherOne = makeAddr("Another1");
+        uint256 amountOne = 500 ether;
+
+        tokenA.mint(anotherOne, amountOne);
+        tokenB.mint(anotherOne, amountOne);
+        vm.startPrank(anotherOne);
+        assertTrue(tokenA.transfer(address(pool), amountOne));
+        assertTrue(tokenB.transfer(address(pool), amountOne));
+        pool.mint(anotherOne);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 3000);
+        address anotherTwo = makeAddr("Another2");
+        uint256 amountTwo = 500 ether;
+
+        tokenA.mint(anotherTwo, amountTwo);
+        tokenB.mint(anotherTwo, amountTwo);
+        vm.startPrank(anotherTwo);
+        assertTrue(tokenA.transfer(address(pool), amountTwo));
+        assertTrue(tokenB.transfer(address(pool), amountTwo));
+        pool.mint(anotherTwo);
+        vm.stopPrank();
+
+        uint256 expected = (uint256(1) << 112) * (1000 + 2000 + 3000);
+        assertEq(pool.price0CumulativeLast(), expected);
+        assertEq(pool.price1CumulativeLast(), expected);
+    }
+
+    function test_cumulatives_correctAfterTimestampOverflow() public {
+        _seedLiquidity();
+
+        vm.warp(uint256(type(uint32).max) + 500);
+
+        address another = makeAddr("Another");
+        uint256 amount = 500 ether;
+
+        tokenA.mint(another, amount);
+        tokenB.mint(another, amount);
+        vm.startPrank(another);
+        assertTrue(tokenA.transfer(address(pool), amount));
+        assertTrue(tokenB.transfer(address(pool), amount));
+        pool.mint(another);
+        vm.stopPrank();
+
+        uint256 expected = (uint256(1) << 112) * 498;
+        assertEq(pool.price0CumulativeLast(), expected);
+        assertEq(pool.price1CumulativeLast(), expected);
+    }
 }

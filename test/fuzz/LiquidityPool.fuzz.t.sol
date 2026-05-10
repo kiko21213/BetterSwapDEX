@@ -33,4 +33,26 @@ contract LiquidityPoolFuzzTest is ProjectSetUp {
         (uint112 afterR0, uint112 afterR1,) = pool.getReserves();
         assertGe(uint256(afterR0) * uint256(afterR1), kBefore);
     }
+
+    function testFuzz_cumulatives_linearInTime(uint32 dt) public {
+        vm.assume(dt > 0);
+        _seedLiquidity();
+
+        vm.warp(block.timestamp + dt);
+
+        address another = makeAddr("Another");
+        uint256 amount = 500 ether;
+
+        tokenA.mint(another, amount);
+        tokenB.mint(another, amount);
+        vm.startPrank(another);
+        assertTrue(tokenA.transfer(address(pool), amount));
+        assertTrue(tokenB.transfer(address(pool), amount));
+        pool.mint(another);
+        vm.stopPrank();
+
+        uint256 expected = (uint256(1) << 112) * dt;
+        assertEq(pool.price0CumulativeLast(), expected);
+        assertEq(pool.price1CumulativeLast(), expected);
+    }
 }
