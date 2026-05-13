@@ -80,4 +80,55 @@ contract PoolFactoryTest is ProjectSetUp {
         vm.expectRevert();
         factory.allPools(2);
     }
+
+    function test_initialFeeState() public view {
+        assertEq(factory.feeTo(), address(0));
+        assertEq(factory.feeToSetter(), address(this));
+    }
+
+    function test_constructor_revertZeroAddress() public {
+        vm.expectRevert(PoolFactory.PoolFactory__ZeroAddress.selector);
+        new PoolFactory(address(0));
+    }
+
+    function test_setFeeTo_happyPath() public {
+        address newFeeTo = makeAddr("test");
+        vm.expectEmit(true, true, false, false, address(factory));
+        emit PoolFactory.FeeToChanged(address(0), newFeeTo);
+        factory.setFeeTo(newFeeTo);
+        assertEq(factory.feeTo(), newFeeTo);
+    }
+
+    function test_setFeeTo_revertForbiddenAddress() public {
+        address attacker = makeAddr("attacker");
+        vm.prank(attacker);
+        vm.expectRevert(PoolFactory.PoolFactory__ForbiddenAddress.selector);
+        factory.setFeeTo(attacker);
+    }
+
+    function test_setFeeToSetter_revertForbiddenAddress() public {
+        address attacker = makeAddr("attacker");
+        vm.prank(attacker);
+        vm.expectRevert(PoolFactory.PoolFactory__ForbiddenAddress.selector);
+        factory.setFeeToSetter(attacker);
+    }
+
+    function test_setFeeToSetter_happyPath() public {
+        address newSetter = makeAddr("newSetter");
+        factory.setFeeToSetter(newSetter);
+        assertEq(newSetter, factory.feeToSetter());
+    }
+
+    function test_FeeToSetter_oldSetterLosesRights() public {
+        address newSetter = makeAddr("newSetter");
+        factory.setFeeToSetter(newSetter);
+
+        vm.expectRevert(PoolFactory.PoolFactory__ForbiddenAddress.selector);
+        factory.setFeeTo(makeAddr("foo"));
+
+        address test = makeAddr("test");
+        vm.prank(newSetter);
+        factory.setFeeTo(test);
+        assertEq(factory.feeTo(), test);
+    }
 }
